@@ -214,11 +214,11 @@ def get_best_checkpoint(
     checkpoint_dir: str = str(config.CHECKPOINT_DIR)
 ) -> Optional[str]:
     """
-    Find Checkpoint with the lowest Validation Loss
-    
-    Reads the history_epoch_*.json files and selects the checkpoint
-    with the lowest val_loss.
-    
+    Find the best Checkpoint (with lowest Validation Loss)
+
+    Checkpoints now save only on val_loss improvement,
+    so the latest checkpoint is the best checkpoint.
+
     Args:
         checkpoint_dir: Checkpoint directory
     
@@ -229,44 +229,51 @@ def get_best_checkpoint(
     if not checkpoint_dir.exists():
         return None
     
-    # Find all History files
+    # Find all checkpoint files
+    checkpoints = sorted(checkpoint_dir.glob("siamese_epoch_*.keras"))
+
+    if not checkpoints:
+        # Try siamese_final.keras as fallback
+        final_checkpoint = checkpoint_dir / "siamese_final.keras"
+        if final_checkpoint.exists():
+            return str(final_checkpoint)
+        return None
+
+    # The latest checkpoint is the best (since we only save on improvement)
+    best_checkpoint = str(checkpoints[-1])
+
+    # Additionally verify with history if available
     history_files = sorted(checkpoint_dir.glob("history_epoch_*.json"))
-    if not history_files:
-        # Fallback: Load the latest Checkpoint
-        return get_latest_checkpoint(str(checkpoint_dir))
-    
-    best_val_loss = float('inf')
-    best_checkpoint = None
-    
-    for history_file in history_files:
-        try:
-            # Extract Epoch number from filename
-            epoch_str = history_file.stem.split('_')[-1]
-            checkpoint_path = checkpoint_dir / f"siamese_epoch_{epoch_str}.keras"
-            
-            if not checkpoint_path.exists():
+    if history_files:
+        best_val_loss = float('inf')
+        verified_best = None
+
+        for history_file in history_files:
+            try:
+                epoch_str = history_file.stem.split('_')[-1]
+                checkpoint_path = checkpoint_dir / f"siamese_epoch_{epoch_str}.keras"
+
+                if not checkpoint_path.exists():
+                    continue
+
+                with open(str(history_file), 'r') as f:
+                    history = json.load(f)
+
+                val_losses = history.get('val_loss', [])
+                if val_losses:
+                    # Get the last val_loss (at the time of checkpoint)
+                    current_val_loss = val_losses[-1] if isinstance(val_losses, list) else val_losses
+
+                    if current_val_loss < best_val_loss:
+                        best_val_loss = current_val_loss
+                        verified_best = str(checkpoint_path)
+
+            except (json.JSONDecodeError, KeyError, IndexError, ValueError):
                 continue
-            
-            # Load History
-            with open(str(history_file), 'r') as f:
-                history = json.load(f)
-            
-            # Find val_loss
-            val_losses = history.get('val_loss', [])
-            if val_losses:
-                current_val_loss = min(val_losses) if isinstance(val_losses, list) else val_losses
-                
-                if current_val_loss < best_val_loss:
-                    best_val_loss = current_val_loss
-                    best_checkpoint = str(checkpoint_path)
-        
-        except (json.JSONDecodeError, KeyError, IndexError, ValueError):
-            continue
-    
-    # Fallback: no val_loss found
-    if best_checkpoint is None:
-        return get_latest_checkpoint(str(checkpoint_dir))
-    
+
+        if verified_best:
+            return verified_best
+
     return best_checkpoint
 
 
@@ -433,11 +440,12 @@ def train_model(
     checkpoint_interval: int = config.SAVE_INTERVAL,
     early_stopping_patience: int = config.EARLY_STOPPING_PATIENCE,
     verbose: int = config.VERBOSE_LEVEL,
-    resume_from_checkpoint: Optional[str] = None
+    resume_from_checkpoint: Optional[str] = None,
+    save_best_only: bool = True
 ) -> TrainingHistory:
     """
-    main training Loop with Early Stopping and Checkpointing
-    
+    main training Loop with Early Stopping and Best Model Checkpointing
+
     Args:
         train_data: Training Dataset
         val_data: Validation Dataset
@@ -445,10 +453,11 @@ def train_model(
         epochs: Maximum amount Epoch
         learning_rate: Learning Rate for Adam
         checkpoint_dir: directory for Checkpoints
-        checkpoint_interval: save Checkpoint all N Epoch
+        checkpoint_interval: save Checkpoint all N Epoch (ignored if save_best_only=True)
         early_stopping_patience: Epochs fix before Stops
         verbose: Logging Level
         resume_from_checkpoint: Optional Checkpoint to resume training
+        save_best_only: If True, save checkpoint only when val_loss improves (DEFAULT)
 
     Returns:
         TrainingHistory: Training Metrics
@@ -459,8 +468,9 @@ def train_model(
         old_checkpoints = list(checkpoint_path.glob("siamese_epoch_*.keras"))
         old_histories = list(checkpoint_path.glob("history_epoch_*.json"))
         old_training_history = list(checkpoint_path.glob("training_history.json"))
+        old_best = list(checkpoint_path.glob("siamese_best.keras"))
 
-        all_old_files = old_checkpoints + old_histories + old_training_history
+        all_old_files = old_checkpoints + old_histories + old_training_history + old_best
 
         if all_old_files:
             print(f"\n⚠️ Old Checkpoints found ({len(all_old_files)} files)")
@@ -481,6 +491,10 @@ def train_model(
     history = TrainingHistory()
     early_stopper = EarlyStoppingCallback(patience=early_stopping_patience)
     
+    # Best Model Tracking
+    best_val_loss = float('inf')
+    best_epoch = 0
+
     start_epoch = 1
     
     # Resume from Checkpoint if available
@@ -500,7 +514,7 @@ def train_model(
     print(f"Learning Rate: {learning_rate}")
     print(f"Batch Size: {config.BATCH_SIZE}")
     print(f"Early Stopping Patience: {early_stopping_patience}")
-    print(f"Checkpoint Interval: {checkpoint_interval}")
+    print(f"Checkpoint Strategy: {'Save BEST only (on val_loss improvement)' if save_best_only else f'Every {checkpoint_interval} epochs'}")
     print(f"{'='*80}\n")
     
     # ======== TRAINING LOOP ========
@@ -511,20 +525,43 @@ def train_model(
         metrics = train_epoch(train_data, val_data, model, loss_fn, optimizer, epoch, verbose)
         history.add_epoch(epoch, metrics)
         
+        current_val_loss = metrics['val_loss']
+
+        # ======== BEST MODEL CHECKPOINTING ========
+        if save_best_only:
+            if current_val_loss < best_val_loss:
+                improvement = best_val_loss - current_val_loss
+                best_val_loss = current_val_loss
+                best_epoch = epoch
+
+                # Save best model with epoch number
+                save_checkpoint(model, optimizer, epoch, checkpoint_dir, history)
+                print(f" New best! val_loss improved by {improvement:.6f}")
+                print(f"   → Checkpoint saved: siamese_epoch_{epoch:04d}.keras")
+            else:
+                print(f"   val_loss did not improve (best: {best_val_loss:.6f} @ epoch {best_epoch})")
+        else:
+            # Old behavior: save every N epochs
+            if epoch % checkpoint_interval == 0:
+                save_checkpoint(model, optimizer, epoch, checkpoint_dir, history)
+                print(f"✓ Checkpoint saved (Epoch {epoch})")
+
         # Early Stopping Check
         if early_stopper.step(epoch, metrics['val_loss']):
             print(f"\n✓ Training done (Early Stopping)")
+            print(f"   Best model: Epoch {best_epoch} with val_loss={best_val_loss:.6f}")
             break
-        
-        # Save Checkpoint
-        if epoch % checkpoint_interval == 0:
-            save_checkpoint(model, optimizer, epoch, checkpoint_dir, history)
-            print(f"✓ Checkpoint saved (Epoch {epoch})")
-    
+
     print(f"\n{'='*80}")
     print(f"TRAINING DONE")
     print(f"{'='*80}")
-    
+    print(f"Best Epoch: {best_epoch} (val_loss: {best_val_loss:.6f})")
+
+    # Save final model
+    final_path = Path(checkpoint_dir) / "siamese_final.keras"
+    model.save(str(final_path))
+    print(f"✓ Final model saved: {final_path.name}")
+
     # save final History
     history_path = Path(checkpoint_dir) / "training_history.json"
     history.save_json(str(history_path))

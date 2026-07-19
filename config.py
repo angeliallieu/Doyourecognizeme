@@ -74,13 +74,13 @@ class EmbeddingConfig:
 
     DENSE_UNITS = 4096
     ACTIVATION = 'sigmoid'
-    L2_WEIGHT_DECAY = 1e-4
-    DROPOUT_RATE = 0.35
+    L2_WEIGHT_DECAY = 1e-3
+    DROPOUT_RATE = 0.45
 
 # ============================================================================
 # INFERENCE
 # ============================================================================
-VERIFICATION_THRESHOLD = 0.25  # Threshold for Siamese network output
+VERIFICATION_THRESHOLD = 0.7  # conservative to minimize false positives
 WEBCAM_DEVICE = 0  # Default webcam index (adjustable)
 WEBCAM_FRAME_SIZE = 250  # Crop size to 250x250px
 WEBCAM_OFFSET_X = 200
@@ -111,7 +111,7 @@ class DatasetConfig:
     """Parameters for data loading and preprocessing"""
     PRELOAD_DATA = False
     MAX_IMAGES_PER_CLASS = 400
-    NEGATIVE_SAMPLE_SIZE = 2000  # Random negative images per dataset load call
+    NEGATIVE_SAMPLE_SIZE = 800
     SHUFFLE_BUFFER = 10000  # Shuffle buffer size
     PREFETCH_BUFFER = 8  # tf.data prefetch buffer size for performance optimization
     NUM_PARALLEL_CALLS = 4  # Number of parallel data loading threads

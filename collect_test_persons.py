@@ -62,11 +62,18 @@ def collect_from_webcam(person_id, num_images=30):
                 print("✗ Error reading from webcam")
                 break
 
-            # Crop to 250x250 (same as during training)
-            y_start = config.WEBCAM_OFFSET_Y
-            x_start = config.WEBCAM_OFFSET_X
-            y_end = y_start + config.WEBCAM_FRAME_SIZE
+            # Calculate centered crop coordinates
+            frame_height, frame_width = frame.shape[:2]
+            x_start = (frame_width - config.WEBCAM_FRAME_SIZE) // 2
+            y_start = (frame_height - config.WEBCAM_FRAME_SIZE) // 2
             x_end = x_start + config.WEBCAM_FRAME_SIZE
+            y_end = y_start + config.WEBCAM_FRAME_SIZE
+
+            # Ensure coordinates are within bounds
+            x_start = max(0, x_start)
+            y_start = max(0, y_start)
+            x_end = min(frame_width, x_end)
+            y_end = min(frame_height, y_end)
 
             cropped_frame = frame[y_start:y_end, x_start:x_end]
 

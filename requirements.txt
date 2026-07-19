@@ -1,9 +1,10 @@
-# Python-Version for this project: 3.ß
+# Python-Version for this project: 3.9
 # Note: For Apple Silicon Mac (M1/M2/M3/M4), use tensorflow-macos
 
 # macOS Apple Silicon specific
 tensorflow-macos>=2.10,<3.0
 tensorflow-metal>=0.5.0
+tensorflow==2.19.0
 
 streamlit>=1.28.0
 opencv-python>=4.8.0

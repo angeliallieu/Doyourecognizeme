@@ -1,4 +1,3 @@
-
 # Do you recognize me? 
 
 *A real-time facial verification system built with TensorFlow and Streamlit.*
@@ -113,8 +112,8 @@ source venv/bin/activate
   
  ```
 pip install -r requirements.txt
-```  
-  
+```
+
 This installs:  
 - `tensorflow` -- Deep learning framework  
 - `streamlit` -- Web application framework for live verification  
@@ -144,11 +143,13 @@ The project is designed to work with or without a GPU. If no GPU is detected, it
   
 The Siamese network requires three types of image data:  
   
-| Category | Description | Content |  
-|----------|-------------|---------|  
-| Anchor | Reference images of the target person | ~400 webcam images of the user |  
+| Category | Description | Content                                        |  
+|----------|-------------|------------------------------------------------|  
+| Anchor | Reference images of the target person | ~400 webcam images of the user                 |  
 | Positive | Additional images of the same person | ~400 webcam images (different poses, lighting) |  
-| Negative | Images of other people | ~2000+ images from the LFW dataset |  
+| Negative | Images of other people | ~800+ images from the LFW dataset              |  
+
+This ratio was selected to still mantain a balanced dataset for training. The negative dataset is still larger to provide sufficient diversity of impostor faces.
   
 ### Collecting Anchor and Positive Images  
   
@@ -234,9 +235,9 @@ Trains the Siamese network using a custom training loop. Key features:
   
 - **Loss Function:** Binary Crossentropy -- ideal for the binary verification task (same = 1, different = 0).  
 - **Optimizer:** Adam with a learning rate of 1e-4, which provides stable convergence.  
-- **Early Stopping:** Monitors the validation loss. If it does not improve for `EARLY_STOPPING_PATIENCE` (configurable, default: 5-10) consecutive epochs, training halts. This prevents overfitting and saves time.  
-- **Best Epoch Selection:** After early stopping (or at the end of training), the epoch with the lowest validation loss is identified as the best checkpoint. This checkpoint represents the model state that generalizes best to unseen data. The best epoch is typically not the final epoch -- it is the epoch before validation loss started increasing.  
-- **Checkpointing:** Model weights are saved every `SAVE_INTERVAL` epochs, plus a final checkpoint is always saved.  
+- **Early Stopping:** Monitors the validation loss. If it does not improve for `EARLY_STOPPING_PATIENCE` (configurable, default: 3) consecutive epochs, training halts. To prevent overfitting and save time.  
+- **Best Epoch Selection:** Checkpoints are saved **only when the validation loss improves** (`save_best_only=True`). The `best_val_loss` and `best_epoch` are tracked in real-time during training. Since checkpoints are exclusively saved on improvement, the **latest checkpoint is automatically the best checkpoint** so no post-training scanning is needed.  
+- **Checkpointing:** Model weights are saved **only when the validation loss improves** (default: `save_best_only=True`). Additionally, a final checkpoint (`siamese_final.keras`) and the full training history (`training_history.json`) are always saved at the end of training.  
   
 The training loop outputs per-epoch metrics:  
 - Training loss and validation loss  
@@ -329,10 +330,15 @@ The applied augmentations are:
 - Random horizontal flip (50% probability)  
   
 ### Early Stopping and Best Epoch  
-  
+
 **Early stopping** is a regularization technique that monitors the validation loss during training. If the validation loss does not improve for a set number of epochs (patience), training is stopped early. This prevents the model from overfitting to the training data, which would manifest as a continuously decreasing training loss but an increasing (or plateaued) validation loss.  
-  
-The **best epoch** is the epoch at which the validation loss was at its minimum. This checkpoint, rather than the final epoch, is saved and used for evaluation. Using the best epoch is standard practice because after this point, the model typically begins to overfit (validation loss increases even as training loss continues to decrease).  
+
+The **best epoch** is the epoch at which the validation loss was at its minimum. With `save_best_only=True`, a checkpoint is saved **immediately** whenever the validation loss drops (improves). This means:
+- The most recently saved checkpoint is guaranteed to be the best one.
+- No post-training search over checkpoints is required.
+- The best epoch and its validation loss are tracked in memory during training (`best_val_loss`, `best_epoch`) and printed in the training summary.
+
+Using the best epoch is standard practice because after this point, the model typically begins to overfit (validation loss increases even as training loss continues to decrease).  
   
 ### Training Command  
   
@@ -361,8 +367,8 @@ Train Recall: 1.0000  Val Recall: 1.0000
 ---  
   
 ## Threshold Tuning  
-  
-The optimal threshold for verification is determined through a systematic search in Notebook 05. The process works as follows:  
+
+The optimal threshold for verification is determined through a systematic search in Notebook 05. The process works as follows:
   
 1. The model generates similarity scores for all test image pairs.  
 2. A range of thresholds (typically from 0.01 to 0.99) is evaluated.  
@@ -370,7 +376,14 @@ The optimal threshold for verification is determined through a systematic search
 4. The threshold that **maximizes the F1-score** is selected as optimal.  
   
 This approach was chosen because the F1-score balances precision (minimizing false accepts) and recall (minimizing false rejects), which is appropriate for a verification system.  
-  
+
+However, you can also choose a **stricter threshold** to prioritize security over user convenience. A higher threshold (e.g., 0.95 instead of 0.7) reduces False Positives (unauthorized persons being accepted) at the cost of a slightly lower F1-score. This trade-off means:
+
+- **Lower threshold (e.g., 0.7):** Higher F1-score, more balanced between True Positives and True Negatives, but some unauthorized persons may slip through.  
+- **Higher threshold (e.g., 0.95):** Lower F1-score (e.g., drops by ~0.0365), but **higher precision** — the system becomes more conservative and accepts only very confident matches, virtually eliminating False Positives.
+
+This is especially useful in security-critical scenarios where preventing unauthorized access is more important than avoiding false rejections.
+
 In addition to the F1-based threshold, notebook 07 calculates the **Equal Error Rate (EER)** -- the threshold where the False Match Rate equals the False Non-Match Rate. The EER is the standard biometric threshold and provides a reference point for security-critical applications.  
   
 ---  
@@ -426,9 +439,7 @@ FILTERS_2 = 128  KERNEL_2 = (7, 7)   POOL_2 = (2, 2)
 FILTERS_3 = 128  KERNEL_3 = (4, 4)   POOL_3 = (2, 2)  
 FILTERS_4 = 256  KERNEL_4 = (4, 4)  
 DENSE_UNITS = 4096  
-ACTIVATION = 'sigmoid'  
-L2_WEIGHT_DECAY = 1e-4  
-DROPOUT_RATE = 0.35  
+ACTIVATION = 'sigmoid'   
 ```  
   
 ### Verification Threshold  
@@ -518,8 +529,10 @@ Early stopping was implemented to halt training when the validation loss stops i
 ### 4. Dropout and L2 Regularization  
   
 To further combat overfitting, the model architecture was extended with:  
-- **Dropout (rate 0.35):** Randomly drops 35% of neurons during training to prevent co-adaptation.  
-- **L2 Weight Decay (1e-4):** Adds a penalty to the loss function proportional to the square of the weights, discouraging the model from relying too heavily on any single feature.  
+- **Dropout (rate 0.45):** Randomly drops 45% of neurons during training to prevent co-adaptation.  
+- **L2 Weight Decay (1e-3):** Adds a penalty to the loss function proportional to the square of the weights, discouraging the model from relying too heavily on any single feature.  
+
+Both values were  increased (from 0.35 → 0.45 for dropout and from 1e-4 → 1e-3 for L2 weight decay) to strengthen regularization and further reduce overfitting.  
   
 ### 5. Balanced Dataset Construction  
   
@@ -554,6 +567,20 @@ These considerations are not unique to this project, they reflect a well-known c
 **Recommendation for future work:** Collect anchor/positive data from multiple individuals with diverse skin tones and facial features to train a more robust verification system.  
   
 ---  
+
+## Known Warnings  
+
+When starting training or the Streamlit app, the following message may appear:  
+
+```
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:... Created TensorFlow device (.../device:GPU:0 ... physical PluggableDevice (device: 0, name: METAL, pci bus id: <undefined>)
+```
+
+This message is **harmless**. It comes from TensorFlow's C++ backend and only indicates that a GPU (e.g., Apple Metal) was detected. The output does not affect training or verification and can be ignored.
+
+---  
+
 ## Sources  
   
 1. **Koch, Gregory, Richard Zemel, and Ruslan Salakhutdinov (2015):** *Siamese Neural Networks for One-Shot Image Recognition*. Available at: https://www.cs.utoronto.ca/~rsalakhu/papers/oneshot1.pdf (last accessed: May 30, 2026).  
@@ -561,6 +588,3 @@ These considerations are not unique to this project, they reflect a well-known c
 2. **Nicholas Renotte (2022):** *Face Recognition with TensorFlow Tutorial Series*. YouTube playlist: https://www.youtube.com/playlist?list=PLgNJO2hghbmhHuhURAGbe6KWpiYZt0AMH. GitHub repository: https://github.com/nicknochnack/FaceRecognition/tree/main.  
   
 3. **LFW Dataset (Labeled Faces in the Wild):** Available on Kaggle: https://www.kaggle.com/datasets/atulanandjha/lfwpeople.
-
-
-AI was used to correct and troubleshoot this code. And comments and error logs were added to improve comprehension.
