@@ -8,6 +8,10 @@ Strategy: On-The-Fly Augmentation while Training
 import os
 import random
 import numpy as np
+
+# Supress TensorFlow C++ INFO/WARNING Logs (z. B. Metal/NUMA Warning)
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+
 import tensorflow as tf
 from pathlib import Path
 from typing import Tuple, List, Iterator, Optional
@@ -428,21 +432,36 @@ def load_all_datasets(
     train_positive_paths = [positive_paths[i] for i in train_indices]
     test_anchor_paths = [anchor_paths[i] for i in test_indices]
     test_positive_paths = [positive_paths[i] for i in test_indices]
+
+    # Split negatives separately to avoid data leakage between train and test.
+    if len(negative_paths) <= 1:
+        train_negative_paths = negative_paths
+        test_negative_paths = negative_paths
+        print("\n Only 1 negative sample available - train/test must share it.")
+    else:
+        shuffled_negative_paths = negative_paths.copy()
+        random.shuffle(shuffled_negative_paths)
+        negative_split_idx = int(len(shuffled_negative_paths) * train_split)
+        negative_split_idx = max(1, min(len(shuffled_negative_paths) - 1, negative_split_idx))
+        train_negative_paths = shuffled_negative_paths[:negative_split_idx]
+        test_negative_paths = shuffled_negative_paths[negative_split_idx:]
     
     print(f"\n Image-Level Split):")
     print(f"  Training: {len(train_anchor_paths)} Anchors + {len(train_positive_paths)} Positives")
     print(f"  Test:     {len(test_anchor_paths)} Anchors + {len(test_positive_paths)} Positives")
+    print(f"  Training Negatives: {len(train_negative_paths)}")
+    print(f"  Test Negatives:     {len(test_negative_paths)}")
     
     # ======== 3. CREATE SEPARATE DATASETS ========
     print(f"\nCreate Train dataset...")
     train_dataset = create_triplet_dataset(
-        train_anchor_paths, train_positive_paths, negative_paths,
+        train_anchor_paths, train_positive_paths, train_negative_paths,
         apply_augmentation=apply_augmentation
     )
     
     print(f"\nCreate Test dataset...")
     test_dataset = create_triplet_dataset(
-        test_anchor_paths, test_positive_paths, negative_paths,
+        test_anchor_paths, test_positive_paths, test_negative_paths,
         apply_augmentation=False  # No Augmentation for valid Test-Metrics
     )
     

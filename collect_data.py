@@ -30,11 +30,8 @@ import config
 # =============================================================================
 
 WEBCAM_DEVICE = 0          # Default webcam
-FRAME_SIZE = 250           # Size of the cropped square
+FRAME_SIZE = 750           # Size of the cropped square
 
-# Fixed crop position
-OFFSET_X = 200
-OFFSET_Y = 120
 
 # =============================================================================
 # FUNCTIONS
@@ -46,6 +43,8 @@ def print_header():
     print("=" * 80)
     print("WEBCAM DATA COLLECTION")
     print("=" * 80)
+
+    print("Place your face in the green frame")
 
     print(f"\nAnchor directory : {config.ANCHOR_PATH}")
     print(f"Positive directory: {config.POSITIVE_PATH}")
@@ -101,10 +100,15 @@ def run_collection():
             print("ERROR: Unable to read frame from webcam.")
             break
 
+        # Calculate center position for the frame
+        height, width = frame.shape[:2]
+        offset_x = (width - FRAME_SIZE) // 2
+        offset_y = (height - FRAME_SIZE) // 2
+
         # Crop image
         cropped = frame[
-            OFFSET_Y:OFFSET_Y + FRAME_SIZE,
-            OFFSET_X:OFFSET_X + FRAME_SIZE
+            offset_y:offset_y + FRAME_SIZE,
+            offset_x:offset_x + FRAME_SIZE
         ]
 
         # Draw overlay
@@ -112,8 +116,8 @@ def run_collection():
 
         cv2.rectangle(
             display,
-            (OFFSET_X, OFFSET_Y),
-            (OFFSET_X + FRAME_SIZE, OFFSET_Y + FRAME_SIZE),
+            (offset_x, offset_y),
+            (offset_x + FRAME_SIZE, offset_y + FRAME_SIZE),
             (0, 255, 0),
             2,
         )
@@ -194,7 +198,7 @@ def print_summary(anchor_count, positive_count):
     print("=" * 80)
 
     if anchor_count + positive_count > 0:
-        print("\nYou can now retrain your Siamese Network using the updated dataset.")
+        print("\nThe images have been saved.")
     else:
         print("\nNo new images were captured.")
 

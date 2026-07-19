@@ -8,6 +8,11 @@ Architecture:
 3. Classification Layer: Dense(1, sigmoid) for binary classification
 """
 
+import os
+
+# Supress TensorFlow C++ INFO/WARNING Logs (z. B. Metal/NUMA Warning)
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+
 import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Layer, Input, Conv2D, MaxPooling2D, Dense, Flatten, Dropout
