@@ -2,10 +2,9 @@
 
 *A real-time facial verification system built with TensorFlow and Streamlit.*
 
-This project implements a Siamese Neural Network architecture to authenticate a person identity by comparing a live webcam capture against stored reference images.  
-This repository was created for the course "Introduction to Biometrics" at the University of Applied Sciences(HTW) Berlin. 
-The project is based on the tutorial by Nicholas Renotte and extends it with additional evaluation notebooks, on-the-fly augmentation, and a Streamlit user interface.
 ---  
+This project implements a Siamese Neural Network architecture to authenticate a person identity by comparing a live webcam capture against stored reference images.  This repository was created for the course "Introduction to Biometrics" at the University of Applied Sciences(HTW) Berlin. 
+The project is based on the tutorial by Nicholas Renotte and extends it with additional evaluation notebooks, on-the-fly augmentation, and a Streamlit user interface.
   
 ## Table of Contents  
   
