@@ -193,27 +193,31 @@ def find_optimal_threshold(
     thresholds: Optional[List[float]] = None
 ) -> Tuple[float, dict]:
     """
-    Find optimal threshold based on F1 Score
-    
+    Find optimal threshold based on Precision (conservative approach).
+    Minimizes false positives to prevent unauthorized access.
+    When multiple thresholds have the same precision, chooses the HIGHEST one.
+
     Args:
         y_true: True Labels
         y_pred: Predicted Similarities
-        thresholds: Thresholds to test (default: 0.1-0.9)
-    
+        thresholds: Thresholds to test (default: 0.5-0.99)
+
     Returns:
         Tuple[best_threshold, best_metrics]
     """
     if thresholds is None:
-        thresholds = np.arange(0.1, 1.0, 0.05)
-    
-    best_f1 = 0
-    best_threshold = 0.5
+        # Changed range from 0.1-0.95 to 0.5-0.99 for more conservative selection
+        thresholds = np.arange(0.5, 1.0, 0.05)
+
+    best_precision = -1
+    best_threshold = 0.95  # Default to conservative value
     best_metrics = None
     
     for threshold in thresholds:
         metrics = compute_confusion_matrix(y_true, y_pred, threshold)
-        if metrics['f1'] > best_f1:
-            best_f1 = metrics['f1']
+        # Maximize Precision, and if equal, choose HIGHEST threshold (most conservative)
+        if metrics['precision'] > best_precision or (metrics['precision'] == best_precision and threshold > best_threshold):
+            best_precision = metrics['precision']
             best_threshold = threshold
             best_metrics = metrics
     

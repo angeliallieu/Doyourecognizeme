@@ -40,6 +40,10 @@ FRAME_SIZE = 750           # Size of the cropped square
 def print_header():
     """Print application information."""
 
+    # Create directories if they don't exist
+    config.ANCHOR_PATH.mkdir(parents=True, exist_ok=True)
+    config.POSITIVE_PATH.mkdir(parents=True, exist_ok=True)
+
     print("=" * 80)
     print("WEBCAM DATA COLLECTION")
     print("=" * 80)
