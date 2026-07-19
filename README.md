@@ -614,6 +614,7 @@ This message is **harmless**. It comes from TensorFlow's C++ backend and only in
   
 1. **Koch, Gregory, Richard Zemel, and Ruslan Salakhutdinov (2015):** *Siamese Neural Networks for One-Shot Image Recognition*. Available at: https://www.cs.utoronto.ca/~rsalakhu/papers/oneshot1.pdf (last accessed: May 30, 2026).  
   
-2. **Nicholas Renotte (2022):** *Face Recognition with TensorFlow Tutorial Series*. YouTube playlist: https://www.youtube.com/playlist?list=PLgNJO2hghbmhHuhURAGbe6KWpiYZt0AMH. GitHub repository: https://github.com/nicknochnack/FaceRecognition/tree/main.  
+2. **Nicholas Renotte (2022):** *Face Recognition with TensorFlow Tutorial Series*. YouTube playlist: https://www.youtube.com/playlist?list=PLgNJO2hghbmhHuhURAGbe6KWpiYZt0AMH. 
+GitHub repository: https://github.com/nicknochnack/FaceRecognition/tree/main.  
   
 3. **LFW Dataset (Labeled Faces in the Wild):** Available on Kaggle: https://www.kaggle.com/datasets/atulanandjha/lfwpeople.
