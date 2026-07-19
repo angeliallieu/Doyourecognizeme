@@ -2,8 +2,13 @@
 Utility functions for Visualization, Evaluation und Inference
 """
 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
+
+# Supress TensorFlow C++ INFO/WARNING Logs (z. B. Metal/NUMA Warning)
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+
 import tensorflow as tf
 from typing import List, Tuple, Optional
 from pathlib import Path

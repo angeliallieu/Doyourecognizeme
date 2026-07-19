@@ -11,6 +11,10 @@ Features:
 
 import os
 import numpy as np
+
+# Supress TensorFlow C++ INFO/WARNING Logs (z. B. Metal/NUMA Warning)
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+
 import tensorflow as tf
 from tensorflow.keras.metrics import Precision, Recall
 from pathlib import Path
