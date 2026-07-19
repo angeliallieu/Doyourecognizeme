@@ -1,6 +1,7 @@
 # Do you recognize me? 
 
 *A real-time facial verification system built with TensorFlow and Streamlit.*
+
 This project implements a Siamese Neural Network architecture to authenticate a person identity by comparing a live webcam capture against stored reference images.  
 This repository was created for the course "Introduction to Biometrics" at the University of Applied Sciences(HTW) Berlin. 
 The project is based on the tutorial by Nicholas Renotte (https://www.youtube.com/watch?v=1gUj6k0k5xM) and extends it with additional evaluation notebooks, on-the-fly augmentation, and a Streamlit user interface.
@@ -524,7 +525,7 @@ traininghistory.png
 However, the evaluation results are almost perfect: prediction scores are concentrated near 0 for different-person pairs and near 1 for same-person pairs, while the ROC curve reaches an AUC of 1.00. This unusually clear separation may indicate that the test data are too easy, highly similar to the training data, or affected by data leakage. A strictly identity-disjoint and more diverse test set is required to confirm real-world generalization.
 ### Conclusion
 
-The Siamese network performs very well on the current evaluation data and does not show obvious overfitting in the training history. Nevertheless, the near-perfect prediction distribution and ROC score should be validated with a larger, more challenging, and identity-disjoint test set.
+The Siamese network performs very well on the current evaluation data and does not directly show obvious overfitting in the training history. Nevertheless, the near-perfect prediction distribution and ROC score should be validated with a larger, more challenging, and identity-disjoint test set.
 
   
 ### Common Issues: Overfitting  
