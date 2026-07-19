@@ -556,7 +556,7 @@ In alignment with biometric security constraints, the verification threshold was
   
 ### Skin Tone and Demographic Bias  
   
-This project was developed with a user of **dark skin tone**. This introduces an important consideration for face verification systems:  
+This project was developed with a user of a **dark skin tone**. This introduces an important consideration for face verification systems:  
   
 - **LFW Dataset Composition:** The LFW dataset, used as the negative training set, is known to have a demographic bias toward lighter skin tones. This means the negative examples the model sees during training may not be representative of the diversity in real-world applications.  
 - **Training Data Characteristics:** The anchor and positive images (the only person the model learns as genuine) come from a single individual with dark skin. The model learns to recognize this specific person's features, including skin tone, as the genuine identity.  
