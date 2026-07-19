@@ -2,7 +2,8 @@
 
 *A real-time facial verification system built with TensorFlow and Streamlit.*
 This project implements a Siamese Neural Network architecture to authenticate a person identity by comparing a live webcam capture against stored reference images.  
-  
+This repository was created for the course "Introduction to Biometrics" at the University of Applied Sciences(HTW) Berlin. 
+The project is based on the tutorial by Nicholas Renotte (https://www.youtube.com/watch?v=1gUj6k0k5xM) and extends it with additional evaluation notebooks, on-the-fly augmentation, and a Streamlit user interface.
 ---  
   
 ## Table of Contents  
@@ -61,7 +62,8 @@ project_root/
 +-- webcam_data_collection.py    # Script: collect anchor/positive webcam images  
 +-- collect_test_persons.py      # Script: collect images of test persons  
 +-- create_negativedataset.py    # Script: extract LFW dataset into negative folder  
-+-- live_verification.py         # Streamlit application for live verification  
++-- live_verification.py         # Streamlit application for live verification 
++-- collect_test_persons.py  # script for collecting multiple peoples data   
 +-- data/  
 |   +-- anchor/                  # Reference images of the target person  
 |   +-- positive/                # Additional images of the target person  
@@ -76,14 +78,12 @@ project_root/
 |   +-- 06_inference.ipynb       # Notebook-based live verification  
 |   +-- 07_fmr_fnmr_analysis.ipynb # FMR, FNMR, EER analysis  
 |   +-- data_collection_webcam.ipynb # Webcam data collection  
-*+-- src/  
++-- src/  
 |   +-- data.py                  # Data loading, preprocessing,* augmentation  
 |   +-- models.py                # Siamese network model definition  
 |   +-- training.py              # Training loop, checkpointing, early stopping  
 |   +-- utils.py                 # Utility functions (metrics, plotting)  
-|   +-- __init__.py  
-+-- scripts/  
-|   +-- collect_test_persons.py  # script for collecting multiple peoples data  
+|   +-- __init__.py    
 +-- checkpoints/                 # Saved model checkpoints  
 ```  
   
@@ -101,6 +101,7 @@ project_root/
   
 ```bash  
 python -m venv venv  
+
 # On Windows:  
 venv\Scripts\activate  
   
@@ -484,8 +485,8 @@ streamlit run live_verification.py
   
 ---  
   
-## Evaluation and Performance  
-  
+## Evaluation and Performance 
+
 ### Metrics  
   
 The model performance is evaluated using the following metrics:  
@@ -497,7 +498,34 @@ The model performance is evaluated using the following metrics:
 - **ROC-AUC:** Area under the Receiver Operating Characteristic curve.  
 - **FMR (False Match Rate):** Proportion of impostor attempts that were incorrectly accepted.  
 - **FNMR (False Non-Match Rate):** Proportion of genuine attempts that were incorrectly rejected.  
-- **EER (Equal Error Rate):** Threshold where FMR equals FNMR.  
+- **EER (Equal Error Rate):** Threshold where FMR equals FNMR. 
+
+### Example Evaluation
+
+### Training History
+
+![Training history: loss, precision, and recall](result_images/traininghistory.png)
+
+The model converges quickly and achieves very low training and validation loss. Precision and recall remain high and closely aligned on both datasets, indicating stable learning without clear signs of overfitting. 
+traininghistory.png
+Prediction scores show a strong separation between matching and non-matching face pairs: genuine pairs are mostly scored close to 1.0, while non-matching pairs are concentrated near 0.0. With a threshold of 0.70, most pairs are classified correctly; only a few high-scoring negative pairs may lead to false matches.
+### Prediction Distribution
+
+![Prediction score distribution](result_images/predictiondistribution.png)
+
+The model assigns scores close to 1.0 for pairs showing the same person and scores close to 0.0 for different-person pairs. With a threshold of 0.70, both classes are almost perfectly separated. Although this indicates strong performance, the unusually sharp separation may suggest that the evaluation data are too easy, limited, or similar to the training data.
+
+### ROC Curve
+
+![ROC curve (AUC = 1.00)](result_images/roccurve.png)
+
+The training and validation curves converge closely, with low loss and similarly high precision and recall. Therefore, the training history alone does not show a typical overfitting gap. 
+traininghistory.png
+However, the evaluation results are almost perfect: prediction scores are concentrated near 0 for different-person pairs and near 1 for same-person pairs, while the ROC curve reaches an AUC of 1.00. This unusually clear separation may indicate that the test data are too easy, highly similar to the training data, or affected by data leakage. A strictly identity-disjoint and more diverse test set is required to confirm real-world generalization.
+### Conclusion
+
+The Siamese network performs very well on the current evaluation data and does not show obvious overfitting in the training history. Nevertheless, the near-perfect prediction distribution and ROC score should be validated with a larger, more challenging, and identity-disjoint test set.
+
   
 ### Common Issues: Overfitting  
   
